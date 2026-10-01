@@ -1,0 +1,39 @@
+/*
+Задача #1: Базовый расчет Month-over-Month (MoM) через OFFSET
+Запрос бизнеса (Финансовый контролер):
+«Мне нужен помесячный отчет по продажам за 2008 год ("CY 2008").
+
+Требуется рассчитать:
+
+Выручку текущего месяца ([Total Sales]).
+
+Выручку предыдущего месяца ([Previous Month Sales]), используя современную функцию OFFSET.
+
+Абсолютное отклонение от предыдущего месяца ([MoM Sales Change] = Total Sales - Previous Month Sales).
+
+Для января 2008 года значение [Previous Month Sales] должно вернуть продажи декабря 2007 года (если они есть в выборке) либо корректный BLANK(), если выборка ограничена строго 2008 годом.
+Отчет должен быть отсортирован по возрастанию месяца».
+*/
+
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Previous Month Sales] =
+        CALCULATE (
+            [Total Sales],
+            OFFSET (
+                -1,
+                ALLSELECTED ( 'Date'[Calendar Year Month] ),
+                ORDERBY ( 'Date'[Calendar Year Month], ASC )
+            )
+        )
+    MEASURE 'Sales'[MoM Sales Change] = [Total Sales] - [Previous Month Sales]
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Date'[Calendar Year Month],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Previous Month Sales", [Previous Month Sales],
+    "MoM Sales Change", [MoM Sales Change]
+)
