@@ -1,3 +1,52 @@
 /*
+Задача #20: Ранг бренда внутри категории (RANK + PARTITIONBY)
+Теперь переходим к функции RANK и добавляем секционирование. В отличие от сквозной нумерации, здесь ранг должен рассчитываться локально внутри каждой категории.
+
+Запрос бизнеса:
+
+«Нам нужен рейтинг брендов по продажам за 2008 год ("CY 2008"), но с расчетом места бренда строго внутри своей категории.
+
+Требуется вывести:
+
+Категорию товара ('Product'[Category]).
+
+Бренд товара ('Product'[Brand]).
+
+Выручку бренда ([Total Sales]).
+
+Ранг бренда внутри категории ([Brand Rank in Category]), используя функцию RANK:
+
+По отношению ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ).
+
+Сортировка: по убыванию выручки ([Total Sales], DESC), а при равенстве — по алфавиту ('Product'[Brand], ASC).
+
+Секционирование: по категории (PARTITIONBY ( 'Product'[Category] )).
+
+Для топового бренда в каждой категории ранг должен быть равен ровно 1.
+Отсортируй отчет по категории (по возрастанию) и рангу [Brand Rank in Category] (по возрастанию)».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Brand Rank in Category] =
+        RANK (
+            skip,
+            ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+            ORDERBY ( [Total Sales], DESC, 'Product'[Brand], ASC ),
+            keep,
+            PARTITIONBY ( 'Product'[Category] )
+        )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Category],
+    'Product'[Brand],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Brand Rank in Category", [Brand Rank in Category]
+)
+ORDER BY
+    'Product'[Category] ASC,
+    [Brand Rank in Category] ASC
 
 
