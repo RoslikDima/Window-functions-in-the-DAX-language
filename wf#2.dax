@@ -1,0 +1,34 @@
+/*
+Опережающий план (LEAD) и относительный темп прироста
+
+Запрос бизнеса (Директор по планированию):«Нам нужен прогнозный аналитический срез по месяцам 2008 года ("CY 2008").
+Требуется вывести:Выручку текущего месяца ([Total Sales]).
+Выручку следующего календарного месяца ([Next Month Sales]), используя OFFSET с положительным смещением.Относительный темп изменения продаж следующего месяца к текущему в процентах ([Next Month Growth %]):$$\text{Next Month Growth \%} = \frac{\text{Next Month Sales} - \text{Total Sales}}{\text{Total Sales}}$$
+Для декабря 2008 года (2008-12) значение [Next Month Sales] и [Next Month Growth %] должно вернуть BLANK(), так как следующий месяц выходит за пределы выборки 2008 года.Используй безопасное деление DIVIDE.
+Отсортируй отчет по возрастанию месяца».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Next Month Sales] =
+        CALCULATE (
+            [Total Sales],
+            OFFSET (
+                1,
+                ALLSELECTED ( 'Date'[Calendar Year Month] ),
+                ORDERBY ( 'Date'[Calendar Year Month], ASC )
+            )
+        )
+    MEASURE 'Sales'[Next Month Growth %] =
+        VAR TotalSales = [Total Sales]
+        RETURN
+            FORMAT ( DIVIDE ( [Next Month Sales] - TotalSales, TotalSales ), "Percent" )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Date'[Calendar Year Month],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Next Month Sales", [Next Month Sales],
+    "Next Month Growth %", [Next Month Growth %]
+)
