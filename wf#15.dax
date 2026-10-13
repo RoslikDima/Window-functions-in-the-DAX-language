@@ -1,0 +1,65 @@
+/*
+Задача #15: Накопительный итог с ежегодным сбросом (WINDOW + PARTITIONBY)
+В Задаче #7 мы строили накопительный итог, жестко фильтруя один 2008 год. Но в реальных дашбордах выбирают диапазон из нескольких лет, и бизнесу требуется YTD с автоматическим сбросом на 1 января каждого нового года.
+
+С PARTITIONBY больше не нужны сложные манипуляции с DATESYTD или FILTER по годам — движок сам изолирует границы каждого года.
+
+Запрос бизнеса (Финансовый директор):
+
+«Нам нужен помесячный отчет за два года: 2007 и 2008 ("CY 2007", "CY 2008").
+
+Требуется вывести:
+Календарный год ('Date'[Calendar Year]).
+Номер месяца ('Date'[Calendar Year Month Number]).
+Название месяца ('Date'[Calendar Year Month]).
+Выручку текущего месяца ([Total Sales]).
+Накопительный итог с начала года ([YTD Sales Partitioned]), используя функцию WINDOW с границами от начала списка (1, ABS) до текущей строки (0, REL), сортировкой по возрастанию номера месяца и секционированием по году (PARTITIONBY ( 'Date'[Calendar Year] )).
+
+Поведение меры:
+
+Для января 2007 года сумма равна продажам января 2007 года.
+
+К декабрю 2007 года накопительный итог собирает весь 2007 год.
+В январе 2008 года накопительный итог сбрасывается и снова равен только продажам января 2008 года.
+Отсортируй отчет по возрастанию номера месяца 'Date'[Calendar Year Month Number]».
+Модель и поля (dax.do Contoso):
+Факт: 'Sales' (Sales[Net Price], Sales[Quantity])
+Оси времени: 'Date'[Calendar Year], 'Date'[Calendar Year Month], 'Date'[Calendar Year Month Number]
+Фильтр: 'Date'[Calendar Year] IN { "CY 2007", "CY 2008" }
+
+
+
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[YTD Sales Partitioned] =
+        CALCULATE (
+            [Total Sales],
+            WINDOW (
+                1,
+                ABS,
+                0,
+                REL,
+                ALLSELECTED (
+                    'Date'[Calendar Year],
+                    'Date'[Calendar Year Month Number],
+                    'Date'[Calendar Year Month]
+                ),
+                ORDERBY ( 'Date'[Calendar Year Month Number], ASC ),
+                keep,
+                PARTITIONBY ( 'Date'[Calendar Year] )
+            )
+        )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Date'[Calendar Year],
+    'Date'[Calendar Year Month Number],
+    'Date'[Calendar Year Month],
+    TREATAS ( { "CY 2007", "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "YTD Sales Partitioned", [YTD Sales Partitioned]
+)
+ORDER BY 'Date'[Calendar Year Month Number]
+

@@ -1,0 +1,35 @@
+/*
+Задача #8: Трехмесячное скользящее среднее (Moving Average 3M)Переходим к скользящим агрегатам. В отличие от накопительного итога (где начало зафиксировано на 1, ABS), у скользящего среднего обе границы окна являются относительными (REL).Запрос бизнеса (Финансовый аналитик):«Нам нужно сгладить помесячные колебания выручки за 2008 год ("CY 2008").Требуется вывести:Номер месяца ('Date'[Calendar Year Month Number]).Название месяца ('Date'[Calendar Year Month]).Выручку текущего месяца ([Total Sales]).Трехмесячное скользящее среднее ([Moving Avg 3M]), используя функцию WINDOW с относительными границами:от 2 месяцев назад (-2, REL)до текущего месяца включительно (0, REL)Агрегацию среднего значения выполняй через функцию AVERAGEX по сгенерированному срезу окна.Поведение на границах года:Для января (Month Number = 1) окно содержит 1 месяц (январь) $\rightarrow$ среднее равно продажам января.Для февраля (Month Number = 2) окно содержит 2 месяца (январь и февраль) $\rightarrow$ среднее делится на 2.Начиная с марта (Month Number = 3) окно всегда состоит строго из 3 месяцев.*Отсортируй отчет по возрастанию номера месяца»
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Moving Avg 3M] =
+        CALCULATE (
+            AVERAGEX (
+                SUMMARIZE (
+                    'Sales',
+                    'Date'[Calendar Year Month],
+                    'Date'[Calendar Year Month Number]
+                ),
+                [Total Sales]
+            ),
+            WINDOW (
+                -2,
+                REL,
+                0,
+                REL,
+                ALLSELECTED ( 'Date'[Calendar Year Month], 'Date'[Calendar Year Month Number] ),
+                ORDERBY ( 'Date'[Calendar Year Month Number], ASC )
+            )
+        )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Date'[Calendar Year Month Number],
+    'Date'[Calendar Year Month],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Moving Avg 3M", [Moving Avg 3M]
+)
+ORDER BY 'Date'[Calendar Year Month Number]

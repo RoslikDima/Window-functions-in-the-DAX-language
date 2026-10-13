@@ -1,0 +1,25 @@
+/*
+Задача #6: Двухмесячный лаг со сглаживанием сезонности (OFFSET)Завершаем первый уровень сложности. В анализе розничных продаж часто используют двухшаговое смещение назад (Two-period Lag), чтобы исключить краткосрочные двухнедельные или месячные колебания спроса.Запрос бизнеса (Руководитель отдела поставок):«Для планирования складских запасов на 2008 год ("CY 2008") нам нужно сопоставлять продажи каждого месяца с продажами двухмесячной давности.Требуется вывести:Месяц ('Date'[Calendar Year Month]).Выручку текущего месяца ([Total Sales]).Выручку два месяца назад ([Sales 2M Ago]), используя OFFSET со смещением -2 по возрастанию столбца 'Date'[Calendar Year Month].Дельту продаж к уровню двухмесячной давности ([Delta 2M]):$$\text{Delta 2M} = \text{Total Sales} - \text{Sales 2M Ago}$$Поскольку выборка ограничена 2008 годом, для января (2008-01) и февраля (2008-02) мера [Sales 2M Ago] должна вернуть честный BLANK(), а расчет дельты начаться строго с марта (2008-03).Отсортируй отчет по возрастанию месяца».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Sales 2M Ago] =
+        CALCULATE (
+            [Total Sales],
+            OFFSET (
+                -2,
+                ALLSELECTED ( 'Date'[Calendar Year Month] ),
+                ORDERBY ( 'Date'[Calendar Year Month], ASC )
+            )
+        )
+    MEASURE 'Sales'[Delta 2M] = [Total Sales] - [Sales 2M Ago]
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Date'[Calendar Year Month],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Sales 2M Ago", [Sales 2M Ago],
+    "Delta 2M", [Delta 2M]
+)

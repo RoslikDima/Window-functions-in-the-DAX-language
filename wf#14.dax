@@ -1,0 +1,33 @@
+/*
+Задача #14: Доля от лидера группы (Share of Category Leader)Развиваем аналитику внутри партиций. Бизнесу важно понимать не только абсолютную дельту в деньгах, но и относительную «силу» бренда относительно лидера его категории.Запрос бизнеса (Категорийный директор):«Нам нужен относительный индекс силы брендов внутри категорий за 2008 год ("CY 2008").Требуется вывести:Категорию товара ('Product'[Category]).Бренд товара ('Product'[Brand]).Выручку текущего бренда ([Total Sales]).Выручку лидера категории ([Top Brand Sales in Category]).Долю продаж текущего бренда от продаж лидера категории в процентах ([% of Category Leader]):$$\% \text{ of Category Leader} = \frac{\text{Total Sales}}{\text{Top Brand Sales in Category}}$$Для лидера категории значение должно быть равно ровно 1.0 (100%).Используй безопасное деление DIVIDE.Отсортируй отчет по категории (по возрастанию) и выручке [Total Sales] (по убыванию)».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Top Brand Sales in Category] =
+        CALCULATE (
+            [Total Sales],
+            INDEX (
+                1,
+                ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+                ORDERBY ( [Total Sales], DESC ),
+                KEEP,
+                PARTITIONBY ( 'Product'[Category] )
+            )
+        )
+    MEASURE 'Sales'[% of Category Leader] =
+        DIVIDE ( [Total Sales], [Top Brand Sales in Category] )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Category],
+    'Product'[Brand],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Top Brand Sales in Category", [Top Brand Sales in Category],
+    "% of Category Leader", [% of Category Leader]
+)
+ORDER BY
+    'Product'[Category],
+    [Total Sales] DESC
+

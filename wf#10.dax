@@ -1,0 +1,30 @@
+/*
+Задача #10: Скользящий максимум за 6 месяцев (Rolling Max)В логистике и риск-менеджменте часто оценивают пиковую нагрузку на каналы поставок за полугодие, рассчитывая скользящий максимум (Rolling Max).Запрос бизнеса (Директор по логистике):«Нам нужно отслеживать максимальный месячный пик продаж за последние 6 месяцев для каждого месяца 2008 года ("CY 2008").Требуется вывести:Номер месяца ('Date'[Calendar Year Month Number]).Название месяца ('Date'[Calendar Year Month]).Выручку текущего месяца ([Total Sales]).Максимальную месячную выручку за последние 6 месяцев ([Rolling Max 6M]), используя функцию WINDOW с относительными границами:от 5 месяцев назад (-5, REL)до текущего месяца включительно (0, REL)Агрегацию максимума выполняй через итератор MAXX по месяцам (VALUES).Поведение на границах года:Для января окно состоит из 1 месяца (январь) $\rightarrow$ максимум равен продажам января.По мере движения по году окно расширяется до 6 месяцев (начиная с июня окно всегда охватывает ровно 6 месяцев).*Отсортируй отчет по возрастанию номера месяца».
+*/
+
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Rolling Max 6M] =
+        CALCULATE (
+            MAXX ( VALUES ( 'Date'[Calendar Year Month Number] ), [Total Sales] ),
+            WINDOW (
+                -5,
+                REL,
+                0,
+                REL,
+                ALLSELECTED ( 'Date'[Calendar Year Month Number], 'Date'[Calendar Year Month] ),
+                ORDERBY ( 'Date'[Calendar Year Month Number], ASC )
+            )
+        )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Date'[Calendar Year Month Number],
+    'Date'[Calendar Year Month],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Rolling Max 6M", [Rolling Max 6M]
+)
+
+order by 'Date'[Calendar Year Month Number]

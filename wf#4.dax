@@ -1,0 +1,24 @@
+/*
+Задача #4: Сравнение с аутсайдером (Отрицательный индекс в INDEX)Продолжаем исследовать возможности INDEX. В SQL для взятия последней строки приходится менять сортировку на противоположную (ORDER BY ... ASC LIMIT 1). В DAX функция INDEX поддерживает отрицательные индексы:1 — первая строка с начала.-1 — первая строка с конца (последнее место).-2 — предпоследняя строка и т.д.Запрос бизнеса (Директор по оптимизации ассортимента):«Мы проводим ревизию брендов за 2008 год ("CY 2008").Требуется вывести:Бренд ('Product'[Brand]).Выручку текущего бренда ([Total Sales]).Выручку бренда, занявшего последнее место по продажам ([Bottom 1 Brand Sales]), используя INDEX с отрицательной позицией -1 при сортировке по убыванию ORDERBY ( [Total Sales], DESC ).Кратность превосходства над аутсайдером ([Ratio to Bottom]): во сколько раз текущий бренд продается лучше, чем аутсайдер:$$\text{Ratio to Bottom} = \frac{\text{Total Sales}}{\text{Bottom 1 Brand Sales}}$$Для самого слабого бренда [Ratio to Bottom] должен быть равен 1.0.Отсортируй отчет по возрастанию выручки [Total Sales] (от слабейшего к сильнейшему)».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Bottom 1 Brand Sales] =
+        CALCULATE (
+            [Total Sales],
+            INDEX ( -1, ALLSELECTED ( 'Product'[Brand] ), ORDERBY ( [Total Sales], DESC ) )
+        )
+    MEASURE 'Sales'[Ratio to Bottom] =
+        DIVIDE ( [Total Sales], [Bottom 1 Brand Sales] )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Brand],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Bottom 1 Brand Sales", [Bottom 1 Brand Sales],
+    "Ratio to Bottom", [Ratio to Bottom]
+)
+
+ORDER BY [Total Sales]

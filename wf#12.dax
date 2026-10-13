@@ -1,0 +1,38 @@
+/*
+Задаче #12: Скользящий размах выручки (Rolling Volatility)Финализируем Уровень 2. В финансовом анализе и риск-менеджменте размах (Range) показывает амплитуду колебаний спроса за скользящий период.Запрос бизнеса (Риск-контролер):«Нам нужно оценивать амплитуду колебаний продаж за последние 4 месяца для каждого месяца 2008 года ("CY 2008").Требуется вывести:Номер месяца ('Date'[Calendar Year Month Number]).Название месяца ('Date'[Calendar Year Month]).Выручку текущего месяца ([Total Sales]).Скользящий размах выручки за последние 4 месяца ([Rolling Range 4M]):$$\text{Rolling Range 4M} = \text{Rolling Max 4M} - \text{Rolling Min 4M}$$Окно строится с границами от 3 месяцев назад (-3, REL) до текущего месяца (0, REL).Внутри окна вычисляются MAXX и MINX по месяцам (VALUES ('Date'[Calendar Year Month Number])).Для января окно состоит из одного месяца $\rightarrow$ размах равен 0.Отсортируй отчет по возрастанию номера месяца».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Rolling Range 4M] =
+        VAR CurrentWindow =
+            WINDOW (
+                -3,
+                REL,
+                0,
+                REL,
+                ALLSELECTED ( 'Date'[Calendar Year Month Number] ),
+                ORDERBY ( 'Date'[Calendar Year Month Number], ASC )
+            )
+        VAR MaxSales =
+            CALCULATE (
+                MAXX ( VALUES ( 'Date'[Calendar Year Month Number] ), [Total Sales] ),
+                CurrentWindow
+            )
+        VAR MinSales =
+            CALCULATE (
+                MINX ( VALUES ( 'Date'[Calendar Year Month Number] ), [Total Sales] ),
+                CurrentWindow
+            )
+        RETURN
+            MaxSales - MinSales
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Date'[Calendar Year Month Number],
+    'Date'[Calendar Year Month],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Rolling Range 4M", [Rolling Range 4M]
+)
+order by 'Date'[Calendar Year Month Number]

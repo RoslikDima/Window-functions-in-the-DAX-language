@@ -1,0 +1,49 @@
+/*
+Задача #18: Накопительный итог внутри категорий (Pareto Accumulation)Финализируем Уровень 3. Это классический паттерн Парето (ABC-анализ): нам нужно упорядочить бренды внутри каждой категории по убыванию продаж и рассчитать кумулятивную сумму сверху вниз, чтобы выявить бренды, формирующие первые 80% выручки категории.Запрос бизнеса (Директор по закупкам):«Нам нужен кумулятивный вклад брендов в продажи своей категории за 2008 год ("CY 2008").Требуется вывести:Категорию товара ('Product'[Category]).Бренд товара ('Product'[Brand]).Выручку текущего бренда ([Total Sales]).Накопительную выручку бренда внутри категории ([Cumulative Sales in Category]), используя функцию WINDOW:Границы: от бренда №1 в категории (1, ABS) до текущего бренда (0, REL).Сортировка: по убыванию выручки ([Total Sales], DESC), а при равенстве продаж — по бренду ('Product'[Brand], ASC).Секционирование: по категории (PARTITIONBY ( 'Product'[Category] )).Кумулятивную долю в категории ([Cumulative % in Category]):$$\text{Cumulative \% in Category} = \frac{\text{Cumulative Sales in Category}}{\text{Category Total Sales}}$$(Меру [Category Total Sales] возьми из предыдущей Задачи #17).Поведение меры:Для первого бренда в категории [Cumulative % in Category] равен его обычной доле.Для последнего бренда в категории [Cumulative % in Category] строго равен 1.0 (100%).Отсортируй отчет по категории (по возрастанию) и выручке [Total Sales] (по убыванию)».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+
+    MEASURE 'Sales'[Category Total Sales] =
+        CALCULATE (
+            [Total Sales],
+            WINDOW (
+                1, ABS,
+                -1, ABS,
+                ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+                ORDERBY ( 'Product'[Brand], ASC ),
+                KEEP,
+                PARTITIONBY ( 'Product'[Category] )
+            )
+        )
+
+    MEASURE 'Sales'[Cumulative Sales in Category] =
+        CALCULATE (
+            [Total Sales],
+            WINDOW (
+                1, ABS,
+                0, REL,
+                ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+                ORDERBY ( [Total Sales], DESC, 'Product'[Brand], ASC ),
+                KEEP,
+                PARTITIONBY ( 'Product'[Category] )
+            )
+        )
+
+    MEASURE 'Sales'[Cumulative % in Category] =
+        DIVIDE ( [Cumulative Sales in Category], [Category Total Sales] )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Category],
+    'Product'[Brand],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Cumulative Sales in Category", [Cumulative Sales in Category],
+    "Cumulative % in Category", [Cumulative % in Category]
+)
+ORDER BY
+    'Product'[Category],
+    [Total Sales] DESC
+

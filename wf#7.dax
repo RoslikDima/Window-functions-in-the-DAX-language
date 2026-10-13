@@ -1,0 +1,52 @@
+/*
+Задача #7: Накопительный итог (Running Total / YTD) без Time Intelligence
+Классический накопительный итог с начала периода (YTD) в чистом DAX раньше требовал вычисления дат через MAX, FILTER и ALL. Функция WINDOW строит окно от абсолютного начала списка (1, ABS) до текущей строки включительно (0, REL).
+
+Запрос бизнеса (Финансовый директор):
+
+«Нам нужен помесячный отчет за 2008 год ("CY 2008").
+
+Требуется вывести:
+
+Месяц ('Date'[Calendar Year Month]).
+
+Выручку текущего месяца ([Total Sales]).
+
+Накопительную выручку с начала года ([Running Total Sales]), используя функцию WINDOW с границами от первой строки года (1, ABS) до текущей строки (0, REL) при сортировке по возрастанию месяца.
+
+Для января [Running Total Sales] должен в точности равняться продажам января, а для декабря — представлять собой суммарную выручку за весь 2008 год.
+Отсортируй отчет по возрастанию месяца».
+
+Модель и поля (dax.do Contoso):
+Факт: 'Sales' (Sales[Net Price], Sales[Quantity])
+
+Ось времени: 'Date'[Calendar Year Month]
+
+Фильтр: 'Date'[Calendar Year] = "CY 2008"
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Running Total Sales] =
+        CALCULATE (
+            [Total Sales],
+            WINDOW (
+                1,
+                ABS,
+                0,
+                REL,
+                ALLSELECTED ( 'Date'[Calendar Year Month] ,
+                             'Date'[Calendar Year Month Number]),
+                ORDERBY ( 'Date'[Calendar Year Month Number], ASC )
+            )
+        )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Date'[Calendar Year Month Number],
+    'Date'[Calendar Year Month],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Running Total Sales", [Running Total Sales]
+)
+order by 'Date'[Calendar Year Month Number]

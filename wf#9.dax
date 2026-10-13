@@ -1,0 +1,28 @@
+/*
+Задача #9: Симметричное сглаживание (Центрированное скользящее среднее)В анализе трендов и эконометрике часто используют не запаздывающее (Trailing) скользящее среднее, а центрированное (Centered Moving Average). В нем текущая точка сглаживается за счет симметричного окна: один месяц назад, текущий месяц и один месяц вперед.Запрос бизнеса (Аналитик данных):«Для сглаживания сезонных всплесков и выявления базового тренда продаж за 2008 год ("CY 2008") нам нужно центрированное 3-месячное скользящее среднее.Требуется вывести:Номер месяца ('Date'[Calendar Year Month Number]).Название месяца ('Date'[Calendar Year Month]).Выручку текущего месяца ([Total Sales]).Центрированное скользящее среднее ([Centered Avg 3M]), используя функцию WINDOW с относительными симметричными границами:от 1 месяца назад (-1, REL)до 1 месяца вперед (1, REL)Агрегацию среднего значения выполняй через AVERAGEX по месяцам.Поведение на границах года:Для января (Month Number = 1) предыдущего месяца в выборке нет $\rightarrow$ окно берет январь и февраль (деление на 2).С февраля по ноябрь окно всегда состоит ровно из 3 месяцев (предыдущий, текущий, следующий) $\rightarrow$ деление на 3.Для декабря (Month Number = 12) следующего месяца в выборке нет $\rightarrow$ окно берет ноябрь и декабрь (деление на 2).*Отсортируй отчет по возрастанию номера месяца».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Centered Avg 3M] =
+        CALCULATE (
+            AVERAGEX ( VALUES ( 'Date'[Calendar Year Month Number] ), [Total Sales] ),
+            WINDOW (
+                -1,
+                REL,
+                1,
+                REL,
+                ALLSELECTED ( 'Date'[Calendar Year Month], 'Date'[Calendar Year Month Number] ),
+                ORDERBY ( 'Date'[Calendar Year Month Number], ASC )
+            )
+        )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Date'[Calendar Year Month Number],
+    'Date'[Calendar Year Month],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Centered Avg 3M", [Centered Avg 3M]
+)
+ORDER BY 'Date'[Calendar Year Month Number]

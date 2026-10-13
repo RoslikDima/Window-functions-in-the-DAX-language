@@ -1,0 +1,25 @@
+/*
+Задача #3: Сравнение с абсолютным лидером (INDEX)Переходим к функции INDEX. В отличие от OFFSET, которая выполняет относительный сдвиг от текущей строки (REL), INDEX обеспечивает абсолютное позиционирование по порядковому номеру строки в отсортированном множестве (ABS).Запрос бизнеса (Коммерческий директор):«Нам нужен рейтинг брендов за 2008 год ("CY 2008").Требуется вывести:Бренд ('Product'[Brand]).Выручку текущего бренда ([Total Sales]).Выручку бренда №1 по продажам ([Top 1 Brand Sales]), используя функцию INDEX с позицией 1 и сортировкой по убыванию продаж.Отставание от лидера в деньгах ([Gap to Leader]):$$\text{Gap to Leader} = \text{Top 1 Brand Sales} - \text{Total Sales}$$Процент выполнения относительно лидера ([% of Leader]):$$\% \text{ of Leader} = \frac{\text{Total Sales}}{\text{Top 1 Brand Sales}}$$Для самого бренда-лидера [Gap to Leader] должен быть равен 0, а [% of Leader] — 1.0 (или 100%).Отсортируй итоговый отчет по убыванию выручки [Total Sales]».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Top 1 Brand Sales] =
+        CALCULATE (
+            [Total Sales],
+            INDEX ( 1, ALLSELECTED ( 'Product'[Brand] ), ORDERBY ( [Total Sales], DESC ) )
+        )
+    MEASURE 'Sales'[Gap to Leader] = [Top 1 Brand Sales] - [Total Sales]
+    MEASURE 'Sales'[% of Leader] =
+        DIVIDE ( [Total Sales], [Top 1 Brand Sales] )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Brand],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Top 1 Brand Sales", [Top 1 Brand Sales],
+    "Gap to Leader", [Gap to Leader],
+    "% of Leader", [% of Leader]
+)
+ORDER BY [Total Sales] DESC

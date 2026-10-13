@@ -1,0 +1,39 @@
+/*
+Задача #19: Сквозная нумерация брендов по выручке (ROWNUMBER)
+Запрос бизнеса:
+
+«Нам нужен сквозной рейтинг всех брендов по продажам за 2008 год ("CY 2008").
+
+Требуется вывести:
+
+Название бренда ('Product'[Brand]).
+
+Порядковый номер бренда ([Brand Row Number]), вычисленный через функцию ROWNUMBER:
+
+По отношению ALLSELECTED ( 'Product'[Brand] ).
+
+С сортировкой по убыванию выручки ([Total Sales], DESC), а при равенстве — по алфавиту ('Product'[Brand], ASC).
+
+Выручку бренда ([Total Sales]).
+
+Отсортируй итоговый отчет по возрастанию [Brand Row Number]».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Brand Row Number] =
+        ROWNUMBER (
+            ALLSELECTED ( 'Product'[Brand] ),
+            ORDERBY ( [Total Sales], DESC, 'Product'[Brand], ASC )
+        )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Brand],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Brand Row Number", [Brand Row Number]
+)
+ORDER BY [Brand Row Number]
+
+

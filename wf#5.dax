@@ -1,0 +1,28 @@
+/*
+Задача #5: Фиксированная база сравнения (Базисный темп роста к январю)Закрепляем работу с INDEX, но теперь применяем её к хронологической оси.В экономическом анализе динамика делится на два типа:Цепной темп роста (Chain growth): сравнение текущего месяца с непосредственно предыдущим (мы делали это через OFFSET в задаче #1).Базисный темп роста (Base-period growth): сравнение всех периодов с одной фиксированной отправной точкой (обычно с началом года / базовым периодом).Запрос бизнеса (Финансовый аналитик):«Нам нужно проанализировать помесячную динамику 2008 года ("CY 2008") относительно старта года.Требуется вывести:Месяц ('Date'[Calendar Year Month]).Выручку текущего месяца ([Total Sales]).Выручку базового месяца (января 2008 года) ([Jan 2008 Sales]), используя функцию INDEX с позицией 1 по возрастанию столбца 'Date'[Calendar Year Month].Базисный темп роста к январю в виде коэффициента ([Growth Index vs Jan]):$$\text{Growth Index vs Jan} = \frac{\text{Total Sales}}{\text{Jan 2008 Sales}}$$Для января 2008 года [Growth Index vs Jan] должен быть равен ровно 1.0.Отсортируй отчет по возрастанию месяца».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Jan 2008 Sales] =
+        CALCULATE (
+            [Total Sales],
+            INDEX (
+                1,
+                ALLSELECTED ( 'Date'[Calendar Year Month] ),
+                ORDERBY ( 'Date'[Calendar Year Month], ASC )
+            )
+        )
+    MEASURE 'Sales'[Growth Index vs Jan] =
+        DIVIDE ( [Total Sales], [Jan 2008 Sales] )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Date'[Calendar Year Month],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Jan 2008 Sales", [Jan 2008 Sales],
+    "Growth Index vs Jan", [Growth Index vs Jan]
+)
+
+ORDER BY 'Date'[Calendar Year Month]

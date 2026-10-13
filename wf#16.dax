@@ -1,0 +1,38 @@
+/*
+Задача #16: Сопоставление с аналогичным периодом прошлого года (YoY через OFFSET + PARTITIONBY)В Задаче #1 мы использовали OFFSET для шага назад на 1 месяц. Теперь применим секционирование к сущностям каталога: рассчитаем прирост продаж к предыдущему месяцу индивидуально для каждого бренда, чтобы смещение не перескакивало границу между разными брендами.Запрос бизнеса (Руководитель коммерческого департамента):«Нам нужен помесячный анализ продаж по брендам за 2008 год ("CY 2008").Требуется вывести:Бренд ('Product'[Brand]).Номер месяца ('Date'[Calendar Year Month Number]).Название месяца ('Date'[Calendar Year Month]).Выручку текущего месяца ([Total Sales]).Выручку предыдущего месяца для этого же бренда ([Prev Month Brand Sales]), используя функцию OFFSET со смещением -1, сортировкой по номеру месяца и секционированием по бренду (PARTITIONBY ( 'Product'[Brand] )).Прирост к предыдущему месяцу в деньгах ([MoM Brand Growth]):$$\text{MoM Brand Growth} = \text{Total Sales} - \text{Prev Month Brand Sales}$$Поведение меры:Для января каждого бренда [Prev Month Brand Sales] должен возвращать честный BLANK(), так как внутри партиции бренда данных за декабрь 2007 нет.Январь следующего бренда ни в коем случае не должен брать декабрь предыдущего бренда.Отсортируй отчет по бренду (по возрастанию) и номеру месяца (по возрастанию)».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Prev Month Brand Sales] =
+        CALCULATE (
+            [Total Sales],
+            OFFSET (
+                -1,
+                SUMMARIZE (
+                ALLSELECTED ( 'Sales' ),
+                    'Product'[Brand],
+                    'Date'[Calendar Year Month Number],
+                    'Date'[Calendar Year Month]
+                ),
+                ORDERBY ( 'Date'[Calendar Year Month Number], ASC ),
+                keep,
+                PARTITIONBY ( 'Product'[Brand] )
+            ))
+    MEASURE 'Sales'[MoM Brand Growth] = [Total Sales] - [Prev Month Brand Sales]
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Brand],
+    'Date'[Calendar Year Month Number],
+    'Date'[Calendar Year Month],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Prev Month Brand Sales", [Prev Month Brand Sales],
+    "MoM Brand Growth", [MoM Brand Growth]
+)
+ORDER BY
+    'Product'[Brand],
+    'Date'[Calendar Year Month Number]
+
+

@@ -1,0 +1,30 @@
+/*
+Задача #13: Продажи лидера внутри категории (INDEX + PARTITIONBY)Запрос бизнеса (Категорийный менеджер):«Нам нужен детальный отчет по брендам внутри категорий за 2008 год ("CY 2008").Требуется вывести:Категорию товара ('Product'[Category]).Бренд товара ('Product'[Brand]).Выручку текущего бренда ([Total Sales]).Выручку бренда №1 по продажам внутри текущей категории ([Top Brand Sales in Category]), используя функцию INDEX с позицией 1, сортировкой по убыванию продаж и секционированием по категории (PARTITIONBY ( 'Product'[Category] )).Отставание текущего бренда от лидера своей категории в деньгах ([Gap to Category Leader]):$$\text{Gap to Category Leader} = \text{Top Brand Sales in Category} - \text{Total Sales}$$Для бренда, являющегося лидером в своей категории, разница [Gap to Category Leader] должна быть равна ровно 0.Отсортируй отчет по категории (по возрастанию) и выручке [Total Sales] (по убыванию)».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Top Brand Sales in Category] =
+        CALCULATE (
+            [Total Sales],
+            INDEX (
+                1,
+                ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+                ORDERBY ( [Total Sales], DESC ),
+                keep,
+                PARTITIONBY ( 'Product'[Category] )
+            )
+        )
+    MEASURE 'Sales'[Gap to Category Leader] = [Top Brand Sales in Category] - [Total Sales]
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Category],
+    'Product'[Brand],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Top Brand Sales in Category", [Top Brand Sales in Category],
+    "Gap to Category Leader", [Gap to Category Leader]
+)
+
+ORDER BY 'Product'[Category], [Total Sales] DESC

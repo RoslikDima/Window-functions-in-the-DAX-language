@@ -1,0 +1,28 @@
+/*
+Задача #11: Обратный накопительный итог (Reverse Running Total / До конца года)В финансовом контроллинге и прогнозировании остатка выполнения годового плана часто рассчитывают обратный кумулятивный итог: сколько выручки компания заработала начиная с текущего месяца и до самого конца финансового года.Запрос бизнеса (Финансовый контролер):«Нам нужно видеть убывающий остаток выручки до конца года по месяцам 2008 года ("CY 2008").Требуется вывести:Номер месяца ('Date'[Calendar Year Month Number]).Название месяца ('Date'[Calendar Year Month]).Выручку текущего месяца ([Total Sales]).Обратный накопительный итог ([Reverse Running Total]), используя функцию WINDOW с границами:от текущего месяца (0, REL)до самого последнего месяца года (-1, ABS)Поведение меры:Для января (Month Number = 1) мера должна вернуть сумму за весь год (январь $\rightarrow$ декабрь).Для декабря (Month Number = 12) мера должна равняться выручке только декабря.*Отсортируй отчет по возрастанию номера месяца».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Reverse Running Total] =
+        CALCULATE (
+            SUMX ( VALUES ( 'Date'[Calendar Year Month Number] ), [Total Sales] ),
+            WINDOW (
+                0,
+                REL,
+                -1,
+                ABS,
+                ALLSELECTED ( 'Date'[Calendar Year Month Number], 'Date'[Calendar Year Month] ),
+                ORDERBY ( 'Date'[Calendar Year Month Number], ASC )
+            )
+        )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Date'[Calendar Year Month Number],
+    'Date'[Calendar Year Month],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Reverse Running Total", [Reverse Running Total]
+)
+ORDER BY 'Date'[Calendar Year Month Number] ASC

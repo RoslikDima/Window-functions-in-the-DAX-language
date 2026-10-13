@@ -1,0 +1,37 @@
+/*
+Задача #17: Доля от общего объема категории (Pareto Weight / % of Category Total)В классическом DAX вычисление доли бренда внутри его категории требовало CALCULATE ( [Total Sales], ALLEXCEPT ( 'Product', 'Product'[Category] ) ) или ручного манипулирования контекстом ALL ( 'Product'[Brand] ).Используя оконное выражение WINDOW ( 1, ABS, -1, ABS, ... ) в сочетании с PARTITIONBY, мы разворачиваем окно на всю длину партиции категории целиком — от самого первого элемента (1, ABS) до самого последнего (-1, ABS), получая чистую сумму по категории без стирания внешних фильтров отчета.Запрос бизнеса (Категорийный менеджер):«Нам нужно увидеть структуру вклада каждого бренда в продажи своей категории за 2008 год ("CY 2008").Требуется вывести:Категорию товара ('Product'[Category]).Бренд товара ('Product'[Brand]).Выручку текущего бренда ([Total Sales]).Суммарную выручку всей категории текущего бренда ([Category Total Sales]), используя функцию WINDOW с границами от начала до конца списка (1, ABS до -1, ABS) и секционированием по категории (PARTITIONBY ( 'Product'[Category] )).Долю бренда в выручке его категории в процентах ([% of Category]):$$\% \text{ of Category} = \frac{\text{Total Sales}}{\text{Category Total Sales}}$$Сумма процентов всех брендов внутри одной категории должна составлять ровно 1.0 (100%).Используй безопасное деление DIVIDE.Отсортируй отчет по категории (по возрастанию) и выручке [Total Sales] (по убыванию)».
+*/
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+    MEASURE 'Sales'[Category Total Sales] =
+        CALCULATE (
+            [Total Sales],
+            WINDOW (
+                1,
+                ABS,
+                -1,
+                ABS,
+                ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+                ORDERBY ( 'Product'[Brand], ASC ),
+                keep,
+                PARTITIONBY ( 'Product'[Category] )
+            )
+        )
+    MEASURE 'Sales'[% of Category] =
+        DIVIDE ( [Total Sales], [Category Total Sales] )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Category],
+    'Product'[Brand],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Category Total Sales", [Category Total Sales],
+    "% of Category", [% of Category]
+)
+ORDER BY
+    'Product'[Category],
+    [Total Sales] DESC
+
+
