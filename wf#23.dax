@@ -1,0 +1,87 @@
+/*
+========================================================================================
+Track: DAX Window Functions
+Level 4: Ranking & Row Numbering (RANK, ROWNUMBER, DENSE_RANK)
+Task #23: Top 3 vs Others Category Breakdown via WINDOW
+Author: Dmitry Roslik
+Platform: dax.do / Power BI (Contoso Model)
+
+BUSINESS REQUIREMENT:
+Сформировать аналитическую витрину по категориям и брендам за 2008 год ("CY 2008"),
+позволяющую сопоставить продажи лидеров рынка с продажами группы «Прочие» (Others).
+
+Метрики:
+1. [Total Sales]: Общая сумма выручки бренда.
+2. [Brand Row In Cat]: Порядковый номер бренда внутри категории через ROWNUMBER.
+3. [Category Total Sales]: Совокупные продажи всей категории через полное окно
+   WINDOW ( 1, ABS, -1, ABS, ... ) с секционированием по категории.
+4. [Top 3 Sales in Cat]: Выручка топ-3 брендов категории через фиксированное окно
+   WINDOW ( 1, ABS, 3, ABS, ... ) с сортировкой по убыванию продаж.
+5. [Others Sales in Cat]: Выручка группы «Все остальные бренды категории»:
+   [Others Sales in Cat] = [Category Total Sales] - [Top 3 Sales in Cat]
+
+Отсортировать итоговую витрину по категории (ASC) и выручке бренда (DESC).
+
+TECHNICAL DETAILS:
+- Fact Table: 'Sales'
+- Dimension Columns: 'Product'[Category], 'Product'[Brand], 'Date'[Calendar Year]
+- Filter: 'Date'[Calendar Year] = "CY 2008"
+- Pattern: Использование абсолютных границ WINDOW (1, ABS до 3, ABS) для вычисления
+  агрегата фиксированного топа и безопасное вычитание из общего объема категории.
+========================================================================================
+*/
+
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+
+    MEASURE 'Sales'[Brand Row In Cat] =
+        ROWNUMBER (
+            ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+            ORDERBY ( [Total Sales], DESC, 'Product'[Brand], ASC ),
+            KEEP,
+            PARTITIONBY ( 'Product'[Category] )
+        )
+
+    MEASURE 'Sales'[Category Total Sales] =
+        CALCULATE (
+            [Total Sales],
+            WINDOW (
+                1, ABS,
+                -1, ABS,
+                ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+                ORDERBY ( [Total Sales], DESC, 'Product'[Brand], ASC ),
+                KEEP,
+                PARTITIONBY ( 'Product'[Category] )
+            )
+        )
+
+    MEASURE 'Sales'[Top 3 Sales in Cat] =
+        CALCULATE (
+            [Total Sales],
+            WINDOW (
+                1, ABS,
+                3, ABS,
+                ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+                ORDERBY ( [Total Sales], DESC, 'Product'[Brand], ASC ),
+                KEEP,
+                PARTITIONBY ( 'Product'[Category] )
+            )
+        )
+
+    MEASURE 'Sales'[Others Sales in Cat] =
+        [Category Total Sales] - [Top 3 Sales in Cat]
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Category],
+    'Product'[Brand],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Brand Row In Cat", [Brand Row In Cat],
+    "Top 3 Sales in Cat", [Top 3 Sales in Cat],
+    "Others Sales in Cat", [Others Sales in Cat]
+)
+ORDER BY
+    'Product'[Category],
+    [Total Sales] DESC
