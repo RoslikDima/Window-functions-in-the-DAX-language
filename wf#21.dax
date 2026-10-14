@@ -1,2 +1,71 @@
 /*
+========================================================================================
+Track: DAX Window Functions
+Level 4: Ranking & Row Numbering (RANK, ROWNUMBER, DENSE_RANK)
+Task #21: Dense Rank vs Skip Rank (DENSE vs SKIP in RANK)
+Author: Dmitry Roslik
+Platform: dax.do / Power BI (Contoso Model)
 
+BUSINESS REQUIREMENT:
+Сформировать аналитический отчет по всем брендам категории "Cameras and camcorders"
+за 2008 календарный год ("CY 2008").
+
+Для демонстрации обработки совпадений (ties) выполнить ранжирование брендов
+по количеству проданных единиц товара ([Total Quantity]):
+1. [Rank Skip]: Стандартный ранг в режиме SKIP (оставляет пропуски в рангах при совпадении показателей).
+2. [Rank Dense]: Плотный ранг в режиме DENSE (присваивает следующие ранги без пропусков).
+Обе меры секционируются по категории (PARTITIONBY('Product'[Category])) и сортируются
+строго по убыванию количества (ORDERBY([Total Quantity], DESC)) без тай-брейкера.
+
+Отсортировать итоговый отчет по убыванию [Total Quantity].
+
+TECHNICAL DETAILS:
+- Fact Table: 'Sales'
+- Dimension Columns: 'Product'[Category], 'Product'[Brand], 'Date'[Calendar Year]
+- Filter: 'Date'[Calendar Year] = "CY 2008" AND 'Product'[Category] = "Cameras and camcorders"
+- Syntax Note: В сигнатуре функции RANK параметр KEEP (<blanks>) обязательно указывается 
+  на 4-й позиции, чтобы секционирование PARTITIONBY встало на 5-ю позицию.
+========================================================================================
+*/
+
+DEFINE
+    -- Базовая выручка
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+
+    -- Базовое количество проданных штук
+    MEASURE 'Sales'[Total Quantity] =
+        SUM ( 'Sales'[Quantity] )
+        
+    -- Ранг с пропусками (SKIP: 1, 2, 2, 4...)
+    MEASURE 'Sales'[Rank Skip] =
+        RANK (
+            SKIP,
+            ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+            ORDERBY ( [Total Quantity], DESC ),
+            KEEP,
+            PARTITIONBY ( 'Product'[Category] )
+        )
+        
+    -- Плотный ранг без пропусков (DENSE: 1, 2, 2, 3...)
+    MEASURE 'Sales'[Rank Dense] =
+        RANK (
+            DENSE,
+            ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+            ORDERBY ( [Total Quantity], DESC ),
+            KEEP,
+            PARTITIONBY ( 'Product'[Category] )
+        )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Category],
+    'Product'[Brand],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    TREATAS ( { "Cameras and camcorders" }, 'Product'[Category] ),
+    "Total Sales", [Total Sales],
+    "Total Quantity", [Total Quantity],
+    "Rank Skip", [Rank Skip],
+    "Rank Dense", [Rank Dense]
+)
+ORDER BY [Total Quantity] DESC
