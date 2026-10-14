@@ -1,0 +1,46 @@
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+
+    MEASURE 'Sales'[Brand Rank] =
+        ROWNUMBER (
+            ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+            ORDERBY ( [Total Sales], DESC, 'Product'[Brand], ASC ),
+            KEEP,
+            PARTITIONBY ( 'Product'[Category] )
+        )
+
+    MEASURE 'Sales'[Leader Sales in Cat] =
+        CALCULATE (
+            [Total Sales],
+            WINDOW (
+                1, ABS,
+                1, ABS,
+                ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+                ORDERBY ( [Total Sales], DESC, 'Product'[Brand], ASC ),
+                KEEP,
+                PARTITIONBY ( 'Product'[Category] )
+            )
+        )
+        
+    MEASURE 'Sales'[% Gap to Leader] =
+        VAR __leader = [Leader Sales in Cat]
+        VAR __totalSales = [Total Sales]
+        VAR __result =
+            DIVIDE ( ( __leader - __totalSales ), __leader )
+        RETURN
+            __result
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Category],
+    'Product'[Brand],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Brand Rank", [Brand Rank],
+    "Leader Sales in Cat", [Leader Sales in Cat],
+    "% Gap to Leader", [% Gap to Leader]
+)
+ORDER BY
+    'Product'[Category],
+    [Brand Rank]
