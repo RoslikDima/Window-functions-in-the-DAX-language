@@ -1,0 +1,59 @@
+/*
+========================================================================================
+Track: DAX Window Functions
+Level 4: Ranking & Row Numbering (RANK, ROWNUMBER, DENSE_RANK)
+Task #22: Top-N Filtering via ROWNUMBER without TOPN
+Author: Dmitry Roslik
+Platform: dax.do / Power BI (Contoso Model)
+
+BUSINESS REQUIREMENT:
+Сформировать отчет по категориям и брендам за 2008 календарный год ("CY 2008").
+Для каждой категории рассчитать порядковый номер бренда на основе выручки и вывести
+продажи строго для топ-3 брендов категории, возвращая BLANK() для остальных.
+
+Метрики:
+1. [Total Sales]: Общая сумма продаж (SUMX по Quantity * Net Price).
+2. [Brand Row In Cat]: Уникальный порядковый номер бренда внутри категории через ROWNUMBER:
+   - Отношение: ALLSELECTED('Product'[Category], 'Product'[Brand])
+   - Сортировка: ORDERBY([Total Sales], DESC, 'Product'[Brand], ASC)
+   - Секционирование: PARTITIONBY('Product'[Category])
+3. [Top 3 Brand Sales]: Условная мера, возвращающая [Total Sales] только если [Brand Row In Cat] <= 3.
+
+Отсортировать итоговую витрину по категории (ASC) и номеру строки бренда (ASC).
+
+TECHNICAL DETAILS:
+- Fact Table: 'Sales'
+- Dimension Columns: 'Product'[Category], 'Product'[Brand], 'Date'[Calendar Year]
+- Filter: 'Date'[Calendar Year] = "CY 2008"
+- Pattern: Использование ROWNUMBER + IF() как легковесная альтернатива TOPN/RANKX 
+  для фильтрации N-лидеров внутри срезов.
+========================================================================================
+*/
+
+DEFINE
+    MEASURE 'Sales'[Total Sales] =
+        SUMX ( 'Sales', Sales[Quantity] * Sales[Net Price] )
+
+    MEASURE 'Sales'[Brand Row In Cat] =
+        ROWNUMBER (
+            ALLSELECTED ( 'Product'[Category], 'Product'[Brand] ),
+            ORDERBY ( [Total Sales], DESC, 'Product'[Brand], ASC ),
+            KEEP,
+            PARTITIONBY ( 'Product'[Category] )
+        )
+
+    MEASURE 'Sales'[Top 3 Brand Sales] =
+        IF ( [Brand Row In Cat] <= 3, [Total Sales] )
+
+EVALUATE
+SUMMARIZECOLUMNS (
+    'Product'[Category],
+    'Product'[Brand],
+    TREATAS ( { "CY 2008" }, 'Date'[Calendar Year] ),
+    "Total Sales", [Total Sales],
+    "Brand Row In Cat", [Brand Row In Cat],
+    "Top 3 Brand Sales", [Top 3 Brand Sales]
+)
+ORDER BY
+    'Product'[Category],
+    [Brand Row In Cat]
